@@ -1,0 +1,166 @@
+<html>
+<head>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/quick-score@0.0.7/dist/quick-score.min.js"></script>
+
+<style>
+body {
+  font-family: helvetica;
+  font-size: 12px;
+}
+
+.paper_page {
+  border: 1px solid #BBBBBB;
+  margin: 1px;
+}
+#div_paper {
+  display: none;
+}
+.text-center {
+  text-align: center;
+}
+.preview {
+  width: 150px;
+  border: 1px solid #CCCCCC;
+  display: inline-block;
+  margin: -1px 0 0 -1px;
+}
+.paper {
+  border: 1px solid #DDDDDD;
+  padding: 3px;
+}
+.title {
+  font-size: 18px;
+}
+
+#topnav input[type=text] {
+  padding: 6px;
+  margin: 8px;
+  font-size: 17px;
+}
+</style>
+<script>
+var data;
+var children = {};
+var parents = [];
+var doms = {};
+
+function addZero(i) {
+  if (i < 10) i = "0" + i;
+  return i;
+}
+
+function loadPreview(key) {
+  if (!(key in children)) return;
+  let ch = children[key];
+
+  for (let id = 0; id < ch.length; id++) {
+    if ("data" in ch[id] && ch[id]["data"]["contentType"] == "application/pdf") {
+      const d = ch[id];
+      $.get(`fetch_preview/${d["key"]}`, (data) => {
+        let lim = 6;
+        let st = "";
+        for (let d in data) {
+          st += `<img src='${data[d]}' class='preview' loading='lazy'>`;
+          if (--lim == 0) break;
+        }
+        $(`#paper_${d["data"]["parentItem"]}`).append(`<div>${st}</div>`);
+      });
+      break;
+    }
+  }
+}
+
+function generateTable() {
+  //data.sort();
+  for (let d of data) {
+    if (!("parentItem" in d["data"])) {
+      const id = d["key"];
+      $("#table").append(`<div id='paper_${d["key"]}' class='paper' key='${d["key"]}'><span class='title'>${d["data"]["title"]}</span></div>`);
+      parents.push(d);
+      doms[id] = null;
+    } else {
+      const id = d["data"]["parentItem"];
+      if (!(id in children)) {
+        children[id] = [];
+      }
+      children[id].push(d);
+    }
+  }
+  for (let c in children) {
+    children[c].sort(function(a, b) { return b["data"]["mtime"] - a["data"]["mtime"]; });
+  }
+  $(".paper").each((i, p) => {
+    //if (i < 10) {
+      loadPreview($(p).attr("key"));
+    //}
+  });
+}
+
+const permutator = (inputArr) => {
+  let result = [];
+  const permute = (arr, m = []) => {
+    if (arr.length === 0) {
+      result.push(m)
+    } else {
+      for (let i = 0; i < arr.length; i++) {
+        let curr = arr.slice();
+        let next = curr.splice(i, 1);
+        permute(curr.slice(), m.concat(next))
+     }
+   }
+ }
+ permute(inputArr)
+ return result;
+}
+
+$(document).ready(function () {
+  $.getJSON("api/data", function(d) {
+    data = d;
+    generateTable();
+    $("#search").on('input',function(e){
+      const qs = new quickScore.QuickScore(parents, ["data.title"]);
+      const ss = $(this).val();
+
+      const perm = permutator(ss.split(" "));
+      let result = [];
+      for (let p of perm) {
+        result = result.concat(qs.search(p.join(" ")));
+      }
+      console.log(result);
+      result.sort((a, b) => b.score - a.score);
+      $(".paper").each( (i, p) => {
+        const key = $(p).attr("key");
+        doms[key] = $(p).detach();
+      });
+      let alreadyshow = {};
+      let maxResult = 10;
+
+      result.forEach((p) => {
+        if (!(p.item.key in alreadyshow)) {
+          if (maxResult-- > 0) {
+            $("#table").append(doms[p.item.key]);
+            alreadyshow[p.item.key] = 1;
+          }
+        }
+      });
+      console.log(alreadyshow);
+      
+      /*
+      result.forEach((resultItem) => {
+        highlighter(resultItem);
+      });*/
+    });
+  })
+});
+
+</script>
+</head>
+<body>
+  <div id="topnav">
+  <input type="text" placeholder="Search.." id="search" autofocus>
+  </div>
+  <div id="table"></div>
+
+</body>

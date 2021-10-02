@@ -1,0 +1,142 @@
+<html>
+<head>
+
+<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/dt/jq-3.3.1/jszip-2.5.0/dt-1.10.25/af-2.3.7/b-1.7.1/b-colvis-1.7.1/b-html5-1.7.1/b-print-1.7.1/cr-1.5.4/date-1.1.0/fc-3.3.3/fh-3.1.9/kt-2.6.2/r-2.2.9/rg-1.1.3/rr-1.2.8/sc-2.0.4/sb-1.1.0/sp-1.3.0/sl-1.3.3/datatables.min.css"/>
+ 
+<script type="text/javascript" src="https://cdn.datatables.net/v/dt/jq-3.3.1/jszip-2.5.0/dt-1.10.25/af-2.3.7/b-1.7.1/b-colvis-1.7.1/b-html5-1.7.1/b-print-1.7.1/cr-1.5.4/date-1.1.0/fc-3.3.3/fh-3.1.9/kt-2.6.2/r-2.2.9/rg-1.1.3/rr-1.2.8/sc-2.0.4/sb-1.1.0/sp-1.3.0/sl-1.3.3/datatables.min.js"></script>
+
+<style>
+body {
+  font-family: helvetica;
+  font-size: 12px;
+}
+#table_paper {main.html
+  font-size: 13px;
+  width: 100% !important;
+}
+tr.tr_paper {
+  cursor: pointer;
+}
+#small_thumb, #medium_thumb {
+  overflow: auto;
+  white-space: nowrap;
+}
+.paper_page {
+  border: 1px solid #BBBBBB;
+  margin: 1px;
+}
+#iframe_paper {
+  width: 100%;
+  position: fixed;
+  margin: 0px;
+  padding: 0px;
+  border: none;
+}
+#text_tags {
+  width: 100%;
+}
+#text_comments {
+  width: 100%;
+}
+#meta_edit table {
+  font-size: 11px;
+}
+#div_paper {
+  display: none;
+}
+.text-center {
+  text-align: center;
+}
+</style>
+<script>
+  console.log(data);
+  function addZero(i) {
+    if (i < 10) i = "0" + i;
+    return i;
+  }
+
+  $(document).ready(function () {
+    cols = ["ID", "Title", "Preview", "Year", "Date Added", "Authors"];
+    let st = "<thead><tr>";
+    st += `<th>ID</th>`;
+    st += `<th>Title</th>`;
+    st += `<th>Preview</th>`;
+    st += `<th class="text-center">Year</th>`;
+    st += `<th>Date Added</th>`;
+    st += `<th>Authors</th>`;
+    st += "</tr></thead>";
+    for (let item of data) {
+      st += "<tr class='tr_paper'>";
+      st += `<td>${item["data"]["key"]}</td>`;
+      st += `<td>${item["data"]["title"]}</td>`;
+      st += `<td>Preview</td>`;
+      let year = "-";
+      if (typeof item["data"]["date"] !== 'undefined') {
+        const found = item["data"]["date"].match(/[0-9]{4}/);
+        if (found) {
+          year = found[0]
+        } 
+      }
+      st += `<td class="text-center">${year}</td>`;
+
+      let d = new Date(item["data"]["dateAdded"]);
+      st += `<td>${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} ${addZero(d.getHours())}:${addZero(d.getMinutes())}:${addZero(d.getSeconds())}</td>`;
+      st += `<td>${item["meta"]["creatorSummary"]}</td>`;
+      st += "</tr>";
+    }
+    st += "<tbody>";
+    st += "</tbody>";
+
+    $("#table_paper").append(st);
+    $('#table_paper').DataTable({
+      "order": [[4, "desc"]],
+      "pageLength": 20,
+      "columnDefs": [
+        {
+          "targets": [ 0, 2, 4 ],
+          "visible": false,
+        },
+        ],
+      rowGroup: {
+        dataSrc: [0],
+        startRender: function ( rows, group ) {
+          console.log(rows.data()[0]);
+          return $('<tr/>')
+            .append( '<td>'+rows.data()[0][1]+'</td>' )
+            .append( '<td>'+rows.data()[0][3]+'</td>' )
+            .append( '<td>'+rows.data()[0][5]+'</td>' )
+        },
+      },
+    });
+
+
+  });
+</script>
+</head>
+<body>
+  <table id='table_paper' class='display'>
+  </table>
+
+<!--<iframe id="iframe_paper" onload="resizeIframe(this)"></iframe>-->
+<div id="div_paper">
+  <h1 id="paper_title"></h1>
+  <div id="meta_edit">
+    <form>
+      <table width="100%">
+        <tr><td width="30%">Tags:</td><td>Comments:</td><td></td></tr>
+        <tr><td><textarea id="text_tags" name="tags" rows="6"></textarea></td>
+          <td><textarea id="text_comments" name="comments" rows="6"></textarea></td>
+          <!--<td width="1%">-->
+            <!--<button type="button" id="save">Save Changes</button>-->
+          <!--</td>-->
+        </tr>
+      </table>
+      
+      
+    </form>
+  </div>
+  <div id="small_thumb">{SMALL}</div>
+  <div id="medium_thumb">{MEDIUM}</div>
+</div>
+</body>
+</htmnks":{"self":{"href":"https://api.zotero.org/users/7902311/items/RXML26ZL","type":"application/json"},"alternate":{"href":"https://www.zol>

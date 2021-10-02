@@ -21,29 +21,51 @@ body {
   text-align: center;
 }
 .preview {
-  width: 150px;
-  border: 1px solid #CCCCCC;
+  height: 180;
+  border: 1px solid #EEEEEE;
   display: inline-block;
   margin: -1px 0 0 -1px;
 }
 .paper {
   border: 1px solid #DDDDDD;
   padding: 3px;
+  border-radius: 5px;
+  margin: 10px;
+  background-color: #FAFAFA;
 }
 .title {
   font-size: 18px;
 }
 
 #topnav input[type=text] {
+  width: 300px;
   padding: 6px;
   margin: 8px;
   font-size: 17px;
+}
+.paper_header {
+  margin: 5px; 
+}
+.div_preview {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  height: 185px;
+}
+.year {
+  float: right;
+  font-size: 14px;
+  color: #002c87;
+}
+#table {
+  max-width: 1150px;
 }
 </style>
 <script>
 var data;
 var children = {};
-var parents = [];
+var parents = {};
+var parentsList = [];
 var doms = {};
 
 function addZero(i) {
@@ -52,33 +74,53 @@ function addZero(i) {
 }
 
 function loadPreview(key) {
-  if (!(key in children)) return;
-  let ch = children[key];
-
-  for (let id = 0; id < ch.length; id++) {
-    if ("data" in ch[id] && ch[id]["data"]["contentType"] == "application/pdf") {
-      const d = ch[id];
-      $.get(`fetch_preview/${d["key"]}`, (data) => {
-        let lim = 6;
-        let st = "";
-        for (let d in data) {
-          st += `<img src='${data[d]}' class='preview' loading='lazy'>`;
-          if (--lim == 0) break;
-        }
-        $(`#paper_${d["data"]["parentItem"]}`).append(`<div>${st}</div>`);
-      });
-      break;
+  let pdfkey = null;
+  // Parent is pdf
+  if (parents[key]["data"]["contentType"] == "application/pdf") {
+    pdfkey = key;
+  } else if (key in children) {
+    let ch = children[key];
+    for (let id = 0; id < ch.length; id++) {
+      if ("data" in ch[id] && ch[id]["data"]["contentType"] == "application/pdf") {
+        pdfkey = ch[id]["key"];
+        break;
+      }
     }
   }
+  if (pdfkey == null) return;
+  $.get(`fetch_preview/${pdfkey}`, (data) => {
+    let lim = 8;
+    let st = "";
+    for (let d in data) {
+      st += `<img src='${data[d]}' class='preview' loading='lazy'>`;
+      if (--lim == 0) break;
+    }
+    $(`#paper_${key}`).append(`<div class='div_preview'>${st}</div>`);
+  });
+  // $(`#paper_${d["data"]["parentItem"]}`).append(`${d["key"]}`);
 }
 
+function sorter(a, b) {
+  return Date.parse(b["data"]["dateAdded"]) - Date.parse(a["data"]["dateAdded"]);
+}
 function generateTable() {
-  //data.sort();
+  data.sort(sorter);
   for (let d of data) {
     if (!("parentItem" in d["data"])) {
       const id = d["key"];
-      $("#table").append(`<div id='paper_${d["key"]}' class='paper' key='${d["key"]}'><span class='title'>${d["data"]["title"]}</span></div>`);
-      parents.push(d);
+
+      let date = new Date(d["data"]["dateAdded"]);
+
+      let year = '-';
+
+      try {
+        const found = d["data"]["date"].match(/[0-9]{4}/);
+        if (found)
+          year = found[0];
+      } catch {};
+      $("#table").append(`<div id='paper_${id}' class='paper' key='${id}'><div class='paper_header'><span class='title'>${d["data"]["title"]}</span><span class='year'>${year}</span></div></div>`);
+      parentsList.push(d);
+      parents[id] = d;
       doms[id] = null;
     } else {
       const id = d["data"]["parentItem"];
@@ -89,7 +131,7 @@ function generateTable() {
     }
   }
   for (let c in children) {
-    children[c].sort(function(a, b) { return b["data"]["mtime"] - a["data"]["mtime"]; });
+    children[c].sort(sorter);
   }
   $(".paper").each((i, p) => {
     //if (i < 10) {
@@ -120,22 +162,27 @@ $(document).ready(function () {
     data = d;
     generateTable();
     $("#search").on('input',function(e){
-      const qs = new quickScore.QuickScore(parents, ["data.title"]);
-      const ss = $(this).val();
+      const qs = new quickScore.QuickScore(parentsList, ["data.title"]);
+      const ss = $(this).val().trim();
 
-      const perm = permutator(ss.split(" "));
+      const split = ss.split(" ");
+      let perm = null;
+      if (split.length <= 3) {
+        perm = permutator(split);
+      } else {
+        perm = [split, split.slice().reverse()];
+      }
       let result = [];
       for (let p of perm) {
         result = result.concat(qs.search(p.join(" ")));
       }
-      console.log(result);
       result.sort((a, b) => b.score - a.score);
       $(".paper").each( (i, p) => {
         const key = $(p).attr("key");
         doms[key] = $(p).detach();
       });
       let alreadyshow = {};
-      let maxResult = 10;
+      let maxResult = 20;
 
       result.forEach((p) => {
         if (!(p.item.key in alreadyshow)) {
@@ -145,12 +192,6 @@ $(document).ready(function () {
           }
         }
       });
-      console.log(alreadyshow);
-      
-      /*
-      result.forEach((resultItem) => {
-        highlighter(resultItem);
-      });*/
     });
   })
 });

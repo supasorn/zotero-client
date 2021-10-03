@@ -60,12 +60,14 @@ body {
 #table {
   max-width: 1150px;
 }
+.authors {
+  color: #999999;
+}
 </style>
 <script>
 var data;
 var children = {};
 var parents = {};
-var parentsList = [];
 var doms = {};
 
 function addZero(i) {
@@ -103,8 +105,17 @@ function loadPreview(key) {
 function sorter(a, b) {
   return Date.parse(b["data"]["dateAdded"]) - Date.parse(a["data"]["dateAdded"]);
 }
+function generateAuthorList(d) {
+  let out = "";
+  if ("data" in d && "creators" in d["data"]) {
+    for (let c of d["data"]["creators"]) {
+      out += `${c.firstName} ${c.lastName}&nbsp;&nbsp;&nbsp;`; 
+    }
+  }
+  return out;
+}
+
 function generateTable() {
-  data.sort(sorter);
   for (let d of data) {
     if (!("parentItem" in d["data"])) {
       const id = d["key"];
@@ -118,8 +129,7 @@ function generateTable() {
         if (found)
           year = found[0];
       } catch {};
-      $("#table").append(`<div id='paper_${id}' class='paper' key='${id}'><div class='paper_header'><span class='title'>${d["data"]["title"]}</span><span class='year'>${year}</span></div></div>`);
-      parentsList.push(d);
+      $("#table").append(`<div id='paper_${id}' class='paper' key='${id}'><div class='paper_header'><span class='title'>${d["data"]["title"]}</span><span class='year'>${year}</span><span class='authors'><br>${generateAuthorList(d)}</span></div></div>`);
       parents[id] = d;
       doms[id] = null;
     } else {
@@ -157,12 +167,31 @@ const permutator = (inputArr) => {
  return result;
 }
 
+function postprocessData() {
+  data.sort(sorter);
+  console.log("postprocess");
+  for (let d of data) {
+    d["search_string"] = d["data"]["title"] + ";";
+    d["search_string"] += generateAuthorList(d) + ";";
+    d["search_string"] += d["data"]["date"] + ";";
+  }
+}
+
+function increaseScoreForExact(result, s) {
+  for (let r of result) {
+    if (r["_"].search_string.search(s) != -1) {
+      r.score ++;
+    }
+  }
+}
+
 $(document).ready(function () {
   $.getJSON("api/data", function(d) {
     data = d;
+    postprocessData();
     generateTable();
     $("#search").on('input',function(e){
-      const qs = new quickScore.QuickScore(parentsList, ["data.title"]);
+      const qs = new quickScore.QuickScore(data, ["search_string"]);
       const ss = $(this).val().trim();
 
       const split = ss.split(" ");
@@ -176,6 +205,7 @@ $(document).ready(function () {
       for (let p of perm) {
         result = result.concat(qs.search(p.join(" ")));
       }
+      increaseScoreForExact(result, ss);
       result.sort((a, b) => b.score - a.score);
       $(".paper").each( (i, p) => {
         const key = $(p).attr("key");
@@ -187,8 +217,12 @@ $(document).ready(function () {
       result.forEach((p) => {
         if (!(p.item.key in alreadyshow)) {
           if (maxResult-- > 0) {
-            $("#table").append(doms[p.item.key]);
-            alreadyshow[p.item.key] = 1;
+            let key = p.item.key;
+            if (!(key in doms)) {
+              key = p.item.data.parentItem;
+            }
+            $("#table").append(doms[key]);
+            alreadyshow[key] = 1;
           }
         }
       });

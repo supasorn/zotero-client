@@ -6,6 +6,7 @@
   "dependencies": {
     "express": "^4.17.1",
     "glob": "^7.2.0",
+    "glob-promise": "^4.2.0",
     "libzotero": "^0.1.13",
     "zotero": "^0.4.1",
     "zotero-api-client": "^0.37.0"

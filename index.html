@@ -51,6 +51,7 @@ body {
   overflow-x: auto;
   overflow-y: hidden;
   height: 185px;
+  cursor: pointer;
 }
 .year {
   float: right;
@@ -97,7 +98,7 @@ function loadPreview(key) {
       st += `<img src='${data[d]}' class='preview' loading='lazy'>`;
       if (--lim == 0) break;
     }
-    $(`#paper_${key}`).append(`<div class='div_preview'>${st}</div>`);
+    $(`#paper_${key}`).append(`<div class='div_preview' onclick='window.open("/pdf_slim_viewer/web/viewer.html?file=http:/papers/${pdfkey}/${parents[key].data.title}")'>${st}</div>`);
   });
   // $(`#paper_${d["data"]["parentItem"]}`).append(`${d["key"]}`);
 }

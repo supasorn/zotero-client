@@ -6,8 +6,10 @@ const {exec} = require("child_process");
 
 const fs = require('fs');
 const glob = require("glob")
+const globp = require("glob-promise")
 
 app.use(express.static("./"));
+app.use("/pdf_slim_viewer", express.static("/Users/supasorn/pdf_slim_viewer/"));
 
 app.get('/sync', (req, res) => {
   var config = new Zotero.RequestConfig();
@@ -37,35 +39,39 @@ app.get('/sync', (req, res) => {
   });
 });
 
-app.get('/fetch_preview/:id', (req, res) => {
+app.get('/fetch_preview/:id', async (req, res) => {
   const id = req.params.id;
-  fs.access(`preview/${id}`, error => {
-    if (!error) {
-      glob(`preview/${id}/small*`, (er, files) => {
-        res.json(files)
-      });
-    } else {
-      glob(`/Users/supasorn/Zotero/storage/${id}/*.pdf`, function(er, files) {
-        if (!er) {
-          console.log(`generating ${id}`);
-          fs.mkdir(`preview/${id}`, err => {
-            const pdf = files[0];
-            exec(`pdftoppm -jpeg -r 50 "${pdf}" ./preview/${id}/small`, (error, stdout, stderr) => {
-              glob(`preview/${id}/small*`, (er, files) => {
-                res.json(files)
-              });
-            });
-          });
-        }
+  const send_list = () => glob(`preview/${id}/small*`, (er, files) => { res.json(files) });
 
-      });
-    }
-  });
+  try { // Preview exists
+    await fs.promises.access(`preview/${id}`);
+    send_list();
+
+  } catch(e) { // Preview doesn't exist
+    const files = await globp(`/Users/supasorn/Zotero/storage/${id}/*.pdf`);
+    if (files.length == 0)
+      return res.sendStatus(404);
+    await fs.promises.mkdir(`preview/${id}`);
+    const pdf = files[0];
+    exec(`pdftoppm -jpeg -r 50 "${pdf}" ./preview/${id}/small`, (error, stdout, stderr) => { send_list(); });
+  }
 })
 
-app.listen(port, () => {
-  console.log(`Example app listening at http://localhost:${port}`)
-})
+app.get('/papers/:id/:name?', async (req, res) => {
+  const id = req.params.id;
+  //console.log(globp);
+  const files = await globp.promise(`/Users/supasorn/Zotero/storage/${id}/*.pdf`);
+  if (files.length == 0)
+    return res.sendStatus(404);
+  try {
+    const data = await fs.promises.readFile(files[0]);
+    res.writeHead(200, {"Content-Type": "application/pdf"});
+    res.write(data);
+    res.end();       
+  } catch (e) {
+    return res.sendStatus(404);
+  }
+});
 
 app.get('/api/data', (req, res) => {
   fs.readFile('./results.json', (err, json) => {
@@ -73,6 +79,11 @@ app.get('/api/data', (req, res) => {
     res.json(obj);
   });
 });
+
+app.listen(port, () => {
+  console.log(`Example app listening at http://localhost:${port}`)
+})
+
 /*
 fetcher.next().then((response)=>{
 	//the parsed json array of items that the api returned is on response.data,

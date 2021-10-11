@@ -11,31 +11,81 @@ const globp = require("glob-promise")
 app.use(express.static("./"));
 app.use("/pdf_slim_viewer", express.static("/Users/supasorn/pdf_slim_viewer/"));
 
-app.get('/sync', (req, res) => {
+app.get('/sync', async (req, res) => {
   var config = new Zotero.RequestConfig();
   config.Key("7ouvIbjpR1YFGTXxAFC3pGDa");
   config.LibraryType('user').LibraryID('7902311');
-  //config.Target('items').TargetModifier("top").Limit(100);
   config.Target('items').Limit(100);
 
-  console.log(config);
-  //config = config.LibraryType('user').LibraryID('7902311');
-  //config = config.Target('items');.TargetModifier("top");
-  //config = config.Limit(100);
+  
+  const obj = await fs.promises.readFile('./results.json');
+  const json = JSON.parse(obj);
+  let maxversion = 0;
+  for (let item of json) {
+    if (item.version > maxversion)
+      maxversion = item.version;
+  }
+  console.log(maxversion)
+  config.config["since"] = maxversion;
+
   var fetcher = new Zotero.Fetcher(config.config);
 
   fetcher.fetchAll().then(()=>{
     let results = fetcher.results;
     console.log(`\nthere are ${fetcher.totalResults} results available, and we've already gotten ${results.length}\n`);
 
-    results.forEach((itemJson)=>{
-      let item = new Zotero.Item(itemJson);
-      console.log(item);
-    });
+    
+    for (let item of results) {
+      const found = json.findIndex(element => element.key == item.key)
+      if (found == -1) {
+        console.log(item.key, "not found");
+        json.push(item);
+      } else {
+        console.log(item.key, "found", found);
+        json[found] = item;
+      }
+    }
+
+    let data = JSON.stringify(json);
+    fs.writeFileSync('results.json', data);
+    res.redirect('/');
+  });
+});
+
+app.get('/fsync', async (req, res) => {
+  var config = new Zotero.RequestConfig();
+  config.Key("7ouvIbjpR1YFGTXxAFC3pGDa");
+  config.LibraryType('user').LibraryID('7902311');
+  config.Target('items').Limit(100);
+
+  var fetcher = new Zotero.Fetcher(config.config);
+
+  fetcher.fetchAll().then(()=>{
+    let results = fetcher.results;
+    console.log(`\nthere are ${fetcher.totalResults} results available, and we've already gotten ${results.length}\n`);
 
     let data = JSON.stringify(results);
     fs.writeFileSync('results.json', data);
+    res.redirect('/');
+  });
+});
 
+app.get('/delete', async (req, res) => {
+  var config = new Zotero.RequestConfig();
+  config.Key("7ouvIbjpR1YFGTXxAFC3pGDa");
+  config.LibraryType('user').LibraryID('7902311');
+  //config.Target('items').TargetModifier("top").Limit(100);
+  config.Target('deleted');
+  config.config["since"] = 1000;
+
+  var fetcher = new Zotero.Fetcher(config.config);
+  fetcher.fetchAll().then(()=>{
+    let results = fetcher.results;
+    console.log(`\nthere are ${fetcher.totalResults} results available, and we've already gotten ${results.length}\n`);
+
+    console.log(results)
+  }).catch(e => {
+    console.log(e);
   });
 });
 
@@ -80,9 +130,13 @@ app.get('/api/data', (req, res) => {
   });
 });
 
-app.listen(port, () => {
-  console.log(`Example app listening at http://localhost:${port}`)
-})
+app.get('/test', (req, res) => {
+  console.log("in")
+  res.write("<iframe height='300px' src='http://localhost:3000/pdf_slim_viewer/web/viewer.html?file=http:/papers/975CNYDP/Object-Centric%20Learning%20with%20Slot%20Attention'>");
+  res.end();
+});
+
+app.listen(port);
 
 /*
 fetcher.next().then((response)=>{

@@ -42,6 +42,7 @@ body {
   padding: 6px;
   margin: 8px;
   font-size: 17px;
+  vertical-align: top;
 }
 .paper_header {
   margin: 5px; 
@@ -60,9 +61,30 @@ body {
 }
 #table {
   max-width: 1150px;
+  float: left;
 }
 .authors {
   color: #999999;
+}
+#reader {
+  float: right;
+}
+.iframe {
+  width: 100%;
+}
+
+#sync {
+  background-image: url('Reload-0.9s-64px.png');
+  background-size: 32px;
+  background-repeat: no-repeat;
+  background-position: center;
+
+  display: inline-block;
+  width: 32px;
+  height: 32px;
+  text-decoration: none;
+  cursor: pointer;
+  padding-top: 15px;
 }
 </style>
 <script>
@@ -192,43 +214,67 @@ $(document).ready(function () {
     postprocessData();
     generateTable();
     $("#search").on('input',function(e){
-      const qs = new quickScore.QuickScore(data, ["search_string"]);
-      const ss = $(this).val().trim();
-
-      const split = ss.split(" ");
-      let perm = null;
-      if (split.length <= 3) {
-        perm = permutator(split);
-      } else {
-        perm = [split, split.slice().reverse()];
-      }
-      let result = [];
-      for (let p of perm) {
-        result = result.concat(qs.search(p.join(" ")));
-      }
-      increaseScoreForExact(result, ss);
-      result.sort((a, b) => b.score - a.score);
-      $(".paper").each( (i, p) => {
-        const key = $(p).attr("key");
-        doms[key] = $(p).detach();
-      });
-      let alreadyshow = {};
-      let maxResult = 20;
-
-      result.forEach((p) => {
-        if (!(p.item.key in alreadyshow)) {
-          if (maxResult-- > 0) {
-            let key = p.item.key;
-            if (!(key in doms)) {
-              key = p.item.data.parentItem;
-            }
-            $("#table").append(doms[key]);
-            alreadyshow[key] = 1;
-          }
+      if ($(this).val().trim() == "") {
+        $(".paper").each( (i, p) => {
+          const key = $(p).attr("key");
+          doms[key] = $(p).detach();
+        });
+        for (let d of data) {
+          $("#table").append(doms[d.key]);
         }
-      });
+      } else {
+        const qs = new quickScore.QuickScore(data, ["search_string"]);
+        const ss = $(this).val().trim();
+
+        const split = ss.split(" ");
+        let perm = null;
+        if (split.length <= 3) {
+          perm = permutator(split);
+        } else {
+          perm = [split, split.slice().reverse()];
+        }
+        let result = [];
+        for (let p of perm) {
+          result = result.concat(qs.search(p.join(" ")));
+        }
+        increaseScoreForExact(result, ss);
+        result.sort((a, b) => b.score - a.score);
+        $(".paper").each( (i, p) => {
+          const key = $(p).attr("key");
+          doms[key] = $(p).detach();
+        });
+        let alreadyshow = {};
+        let maxResult = 20;
+
+        result.forEach((p) => {
+          if (!(p.item.key in alreadyshow)) {
+            if (maxResult-- > 0) {
+              let key = p.item.key;
+              if (!(key in doms)) {
+                key = p.item.data.parentItem;
+              }
+              $("#table").append(doms[key]);
+              alreadyshow[key] = 1;
+            }
+          }
+        });
+      }
     });
-  })
+  });
+  var img = new Image();
+  img.src = 'Reload-0.9s-64px.gif';
+  var sync = 0;
+
+  $("#sync").click(function(e) {
+    if (!sync) {
+      $(this).css("background-image", "url('Reload-0.9s-64px.gif')");
+      $.get("/sync", function(data) {
+        location.reload();
+      });
+      sync = 1;
+    }
+    e.preventDefault();
+  });
 });
 
 </script>
@@ -236,7 +282,11 @@ $(document).ready(function () {
 <body>
   <div id="topnav">
   <input type="text" placeholder="Search.." id="search" autofocus>
+  <div id="sync"></div>
   </div>
   <div id="table"></div>
+  <div id="reader">
+    <!--<iframe class="iframe" src="http://localhost:3000/pdf_slim_viewer/web/viewer.html?file=http:/papers/6TPTN29X/AN%20INTRODUCTION%20TO%20STOCHASTIC%20DIFFERENTIAL%20EQUATIONS%20VERSION%201.2">-->
+  </div>
 
 </body>

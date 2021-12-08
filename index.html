@@ -86,6 +86,9 @@ var data;
 var children = {};
 var parents = {};
 var doms = {};
+var previews = {};
+var preview_timeout;
+const MAX_RESULTS = 25;
 
 var fetchCounter = 0;
 
@@ -95,7 +98,8 @@ function addZero(i) {
 }
 
 function loadPreview(key) {
-  if ($(`#paper_${key} .div_preview`).text().length) {
+  if ($(`#paper_${key} .div_preview`).length) {
+    $(`#paper_${key} .div_preview`).html(previews[key]);
     return;
   }
 
@@ -114,9 +118,7 @@ function loadPreview(key) {
   }
   if (pdfkey == null) return;
   $(`#paper_${key}`).append(`<div class='div_preview' onclick='window.open("/pdf_slim_viewer/web/viewer.html?file=http:/papers/${pdfkey}/${parents[key].data.title}")'></div>`);
-  console.log("fetch", pdfkey);
-  fetchCounter++;
-  console.log("+", fetchCounter, pdfkey, key);
+
   $.get(`fetch_preview/${pdfkey}`, (data) => {
     let lim = 8;
     let st = "";
@@ -125,9 +127,8 @@ function loadPreview(key) {
       st += `<img src='${data[d]}' class='preview'>`;
       if (--lim == 0) break;
     }
+    previews[key] = st;
     $(`#paper_${key} .div_preview`).html(st);
-    fetchCounter--;
-    console.log("-", fetchCounter, pdfkey, key, st.length);
   });
   // $(`#paper_${d["data"]["parentItem"]}`).append(`${d["key"]}`);
 }
@@ -146,7 +147,6 @@ function generateAuthorList(d) {
 }
 
 function generateTable() {
-  let MAX_RESULT = 25;
   for (let d of data) {
     if (!("parentItem" in d["data"])) {
       const id = d["key"];
@@ -219,9 +219,8 @@ function increaseScoreForExact(result, s) {
 
 function showPreviewForTopResults() {
   const paperlist = $("#table").children(".paper");
-  for (let i = 0; i < 10 && i < paperlist.length; i++) {
+  for (let i = 0; i < MAX_RESULTS && i < paperlist.length; i++) {
     loadPreview($(paperlist[i]).attr("key"));
-    //loadPreview(paperlist[i].attr("key");
 
   }
 }
@@ -299,7 +298,7 @@ $(document).ready(function () {
           doms[key] = $(p).detach();
         });
         let alreadyshow = {};
-        let maxResult = 25;
+        let maxResult = MAX_RESULTS;
 
         result.forEach((p) => {
           if (!(p.item.key in alreadyshow)) {
@@ -314,7 +313,8 @@ $(document).ready(function () {
           }
         });
       }
-     showPreviewForTopResults();
+      window.clearTimeout(preview_timeout);
+      preview_timeout = setTimeout(showPreviewForTopResults, 500);
     });
   });
   var img = new Image();

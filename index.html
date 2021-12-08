@@ -1,8 +1,8 @@
-<html>
-<head>
+<otmlfusihead>
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/quick-score@0.0.7/dist/quick-score.min.js"></script>
+<script src="fzf.js"></script>
 
 <style>
 body {
@@ -10,14 +10,8 @@ body {
   font-size: 12px;
 }
 
-.paper_page {
-  border: 1px solid #BBBBBB;
-  margin: 1px;
-}
-#div_paper {
-  display: none;
-}
-.text-center {
+.paper_pafuse
+.text-centerfuse{
   text-align: center;
 }
 .preview {
@@ -212,7 +206,9 @@ $(document).ready(function () {
   $.getJSON("api/data", function(d) {
     data = d;
     postprocessData();
+
     generateTable();
+    const searcher = "fzf";
     $("#search").on('input',function(e){
       if ($(this).val().trim() == "") {
         $(".paper").each( (i, p) => {
@@ -223,22 +219,56 @@ $(document).ready(function () {
           $("#table").append(doms[d.key]);
         }
       } else {
-        const qs = new quickScore.QuickScore(data, ["search_string"]);
-        const ss = $(this).val().trim();
-
-        const split = ss.split(" ");
-        let perm = null;
-        if (split.length <= 3) {
-          perm = permutator(split);
-        } else {
-          perm = [split, split.slice().reverse()];
-        }
         let result = [];
-        for (let p of perm) {
-          result = result.concat(qs.search(p.join(" ")));
+        if (searcher == 'fzf') {
+          const ss = $(this).val().trim();
+          const fzf = getFzf(data);
+          result = fzf.find(ss);
+          
+        } else if (searcher == 'quick') {
+          const qs = new quickScore.QuickScore(data, ["search_string"]);
+          const ss = $(this).val().trim();
+
+          const split = ss.split(" ");
+          let perm = null;
+          if (split.length <= 3) {
+            perm = permutator(split);
+          } else {
+            perm = [split, split.slice().reverse()];
+          }
+          result = [];
+          for (let p of perm) {
+            result = result.concat(qs.search(p.join(" ")));
+          }
+          increaseScoreForExact(result, ss);
+          result.sort((a, b) => b.score - a.score);
+        } else if (searcher == 'fuse') {
+          const options = {
+            // isCaseSensitive: false,
+            // includeScore: false,
+            shouldSort: true,
+            // includeMatches: false,
+            // findAllMatches: false,
+            // minMatchCharLength: 1,
+            // location: 0,
+            // threshold: 0.6,
+            // distance: 100,
+            useExtendedSearch: true,
+            // ignoreLocation: false,
+            // ignoreFieldNorm: false,
+            keys: [
+              "search_string",
+            ]
+          };
+          const fuse = new Fuse(data, options);
+          const ss = $(this).val().trim();
+
+          result = fuse.search(ss);
+          
+          console.log(result);
+          
         }
-        increaseScoreForExact(result, ss);
-        result.sort((a, b) => b.score - a.score);
+
         $(".paper").each( (i, p) => {
           const key = $(p).attr("key");
           doms[key] = $(p).detach();

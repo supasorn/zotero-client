@@ -87,12 +87,18 @@ var children = {};
 var parents = {};
 var doms = {};
 
+var fetchCounter = 0;
+
 function addZero(i) {
   if (i < 10) i = "0" + i;
   return i;
 }
 
 function loadPreview(key) {
+  if ($(`#paper_${key} .div_preview`).text().length) {
+    return;
+  }
+
   let pdfkey = null;
   // Parent is pdf
   if (parents[key]["data"]["contentType"] == "application/pdf") {
@@ -107,14 +113,21 @@ function loadPreview(key) {
     }
   }
   if (pdfkey == null) return;
+  $(`#paper_${key}`).append(`<div class='div_preview' onclick='window.open("/pdf_slim_viewer/web/viewer.html?file=http:/papers/${pdfkey}/${parents[key].data.title}")'></div>`);
+  console.log("fetch", pdfkey);
+  fetchCounter++;
+  console.log("+", fetchCounter, pdfkey, key);
   $.get(`fetch_preview/${pdfkey}`, (data) => {
     let lim = 8;
     let st = "";
     for (let d in data) {
-      st += `<img src='${data[d]}' class='preview' loading='lazy'>`;
+      //st += `<img src='${data[d]}' class='preview' loading='lazy'>`;
+      st += `<img src='${data[d]}' class='preview'>`;
       if (--lim == 0) break;
     }
-    $(`#paper_${key}`).append(`<div class='div_preview' onclick='window.open("/pdf_slim_viewer/web/viewer.html?file=http:/papers/${pdfkey}/${parents[key].data.title}")'>${st}</div>`);
+    $(`#paper_${key} .div_preview`).html(st);
+    fetchCounter--;
+    console.log("-", fetchCounter, pdfkey, key, st.length);
   });
   // $(`#paper_${d["data"]["parentItem"]}`).append(`${d["key"]}`);
 }
@@ -133,6 +146,7 @@ function generateAuthorList(d) {
 }
 
 function generateTable() {
+  let MAX_RESULT = 25;
   for (let d of data) {
     if (!("parentItem" in d["data"])) {
       const id = d["key"];
@@ -160,11 +174,12 @@ function generateTable() {
   for (let c in children) {
     children[c].sort(sorter);
   }
+  /*
   $(".paper").each((i, p) => {
     //if (i < 10) {
       loadPreview($(p).attr("key"));
     //}
-  });
+  });*/
 }
 
 const permutator = (inputArr) => {
@@ -202,12 +217,22 @@ function increaseScoreForExact(result, s) {
   }
 }
 
+function showPreviewForTopResults() {
+  const paperlist = $("#table").children(".paper");
+  for (let i = 0; i < 10 && i < paperlist.length; i++) {
+    loadPreview($(paperlist[i]).attr("key"));
+    //loadPreview(paperlist[i].attr("key");
+
+  }
+}
+
 $(document).ready(function () {
   $.getJSON("api/data", function(d) {
     data = d;
     postprocessData();
 
     generateTable();
+    showPreviewForTopResults();
     const searcher = "fzf";
     $("#search").on('input',function(e){
       if ($(this).val().trim() == "") {
@@ -274,7 +299,7 @@ $(document).ready(function () {
           doms[key] = $(p).detach();
         });
         let alreadyshow = {};
-        let maxResult = 20;
+        let maxResult = 25;
 
         result.forEach((p) => {
           if (!(p.item.key in alreadyshow)) {
@@ -289,6 +314,7 @@ $(document).ready(function () {
           }
         });
       }
+     showPreviewForTopResults();
     });
   });
   var img = new Image();

@@ -93,15 +93,21 @@ app.get('/fetch_preview/:id', async (req, res) => {
   const id = req.params.id;
   const send_list = () => glob(`preview/${id}/small*`, (er, files) => { res.json(files) });
 
+  console.log(id);
   try { // Preview exists
-    await fs.promises.access(`preview/${id}`);
+    console.log("exists");
+    await fs.promises.access(`preview/${id}/small-01.jpg`);
     send_list();
 
   } catch(e) { // Preview doesn't exist
+    console.log("not exist");
     const files = await globp(`/Users/supasorn/Zotero/storage/${id}/*.pdf`);
     if (files.length == 0)
       return res.sendStatus(404);
-    await fs.promises.mkdir(`preview/${id}`);
+
+    if (!fs.existsSync(`preview/${id}`))
+      await fs.promises.mkdir(`preview/${id}`);
+
     const pdf = files[0];
     exec(`pdftoppm -jpeg -r 50 "${pdf}" ./preview/${id}/small`, (error, stdout, stderr) => { send_list(); });
   }

@@ -1,0 +1,22 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <script src="https://cdn.bootcss.com/jquery/3.2.0/jquery.js"></script>
+</head>
+<body>
+    <div id="time" style="width: 300px;height: 50px;background-color: #0C0C0C;
+    color: white;text-align: center;line-height: 50px;margin-left: 40%;font-size: 20px"></div>
+
+    <script>
+            var ws = new WebSocket("ws://"+ window.location.host+ "/echo");  //连接server
+
+            ws.onmessage = function (event) {
+                content = document.createTextNode(event.data); // 接收数据
+                $("#time").html(content);
+
+            };
+
+    </script>
+    </body>
+</html>

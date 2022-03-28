@@ -90,6 +90,14 @@ body {
   cursor: pointer;
   margin-top: 15px;
 }
+
+#gsearch iframe {
+  width: 1130px;
+  height: 500px;
+}
+#gsearch {
+  display: none;
+}
 </style>
 <script>
 var data;
@@ -243,6 +251,19 @@ $(document).ready(function () {
     generateTable();
     showPreviewForTopResults();
     const searcher = "fzf";
+    $("#search").keydown('input',function(e){
+      if (e.keyCode == 13) {
+        let arx = null;
+        if (e.metaKey || e.ctrlKey)
+          arx = "+arxiv";
+        else if (e.shiftKey) 
+          arx = "";
+        if (arx) {
+          $("#gsearch iframe").attr('src', `https://www.google.com/search?q=${$(this).val()}${arx}&igu=1`);;
+          $("#gsearch").show();
+        }
+      }
+    });
     $("#search").on('input',function(e){
       if ($(this).val().trim() == "") {
         $(".paper").each( (i, p) => {
@@ -349,6 +370,10 @@ $(document).ready(function () {
   <div id="topnav" class="nav justify-content-center">
     <input type="text" placeholder="Search.." id="search" autofocus>
     <div id="sync"></div>
+  </div>
+  <div id="gsearch" class="d-flex justify-content-center" style="display: none !important;">
+    <iframe>
+    </iframe>
   </div>
   <div class="d-flex justify-content-center">
     <div id="table"></div>

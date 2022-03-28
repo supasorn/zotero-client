@@ -1,5 +1,9 @@
 # zotero-client
-Local pdf viewer for zotero.
+Pdf viewer for Zotero local storage. It supports fuzzy search, horizontal scrolling, and auto-trim the white margin.
+
+This software is very beta, and I didn't test it very well.
+
+https://user-images.githubusercontent.com/3422049/160427320-745015b6-71ef-446e-b35b-31de4fdb8cae.mp4
 
 Requires node.js
 

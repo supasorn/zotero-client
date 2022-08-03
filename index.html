@@ -135,7 +135,7 @@ function loadPreview(key) {
     }
   }
   if (pdfkey == null) return;
-  $(`#paper_${key}`).append(`<div class='div_preview' onclick='window.open("/pdf_slim_viewer/web/viewer.html?file=http:/papers/${pdfkey}/${parents[key].data.title}")'></div>`);
+  $(`#paper_${key}`).append(`<div class='div_preview' onclick='window.open("/pdf_slim_viewer/web/viewer.html?file=http:/papers/${pdfkey}/${parents[key].data.title.replace('"', '').replace("'", "")}")'></div>`);
 
   $.get(`fetch_preview/${pdfkey}`, (data) => {
     let lim = 8;

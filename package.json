@@ -4,14 +4,15 @@
   "description": "",
   "main": "index.js",
   "dependencies": {
+    "arxiv-api": "^1.1.1",
     "express": "^4.17.1",
     "glob": "^7.2.0",
     "glob-promise": "^4.2.0",
     "libzotero": "^0.1.13",
+    "phin": "^3.6.1",
     "zotero": "^0.4.1",
     "zotero-api-client": "^0.37.0"
   },
-  "devDependencies": {},
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },

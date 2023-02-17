@@ -2,7 +2,7 @@ const express = require('express')
 const app = express()
 const port = 3000
 const Zotero = require('libzotero');
-const {exec} = require("child_process");
+const { exec } = require("child_process");
 
 const fs = require('fs');
 const glob = require("glob")
@@ -20,7 +20,7 @@ app.get('/sync', async (req, res) => {
   config.LibraryType('user').LibraryID(cred.userid);
   config.Target('items').Limit(100);
 
-  
+
   const obj = await fs.promises.readFile('./results.json');
   const json = JSON.parse(obj);
   let maxversion = 0;
@@ -33,11 +33,11 @@ app.get('/sync', async (req, res) => {
 
   var fetcher = new Zotero.Fetcher(config.config);
 
-  fetcher.fetchAll().then(()=>{
+  fetcher.fetchAll().then(() => {
     let results = fetcher.results;
     console.log(`\nthere are ${fetcher.totalResults} results available, and we've already gotten ${results.length}\n`);
 
-    
+
     for (let item of results) {
       const found = json.findIndex(element => element.key == item.key)
       if (found == -1) {
@@ -63,7 +63,7 @@ app.get('/fsync', async (req, res) => {
 
   var fetcher = new Zotero.Fetcher(config.config);
 
-  fetcher.fetchAll().then(()=>{
+  fetcher.fetchAll().then(() => {
     let results = fetcher.results;
     console.log(`\nthere are ${fetcher.totalResults} results available, and we've already gotten ${results.length}\n`);
 
@@ -82,7 +82,7 @@ app.get('/delete', async (req, res) => {
   config.config["since"] = 1000;
 
   var fetcher = new Zotero.Fetcher(config.config);
-  fetcher.fetchAll().then(()=>{
+  fetcher.fetchAll().then(() => {
     let results = fetcher.results;
     console.log(`\nthere are ${fetcher.totalResults} results available, and we've already gotten ${results.length}\n`);
 
@@ -102,7 +102,7 @@ app.get('/fetch_preview/:id', async (req, res) => {
     await fs.promises.access(`preview/${id}/small-01.jpg`);
     send_list();
 
-  } catch(e) { // Preview doesn't exist
+  } catch (e) { // Preview doesn't exist
     console.log("not exist");
     const files = await globp(`${cred.path}/${id}/*.pdf`);
     if (files.length == 0)
@@ -112,7 +112,7 @@ app.get('/fetch_preview/:id', async (req, res) => {
       await fs.promises.mkdir(`preview/${id}`);
 
     const pdf = files[0];
-    exec(`pdftoppm -jpeg -r 50 "${pdf}" ./preview/${id}/small`, (error, stdout, stderr) => { send_list(); });
+    exec(`pdftoppm -jpeg -r 50 -l 10 "${pdf}" ./preview/${id}/small`, (error, stdout, stderr) => { send_list(); });
   }
 })
 
@@ -124,9 +124,9 @@ app.get('/papers/:id/:name?', async (req, res) => {
     return res.sendStatus(404);
   try {
     const data = await fs.promises.readFile(files[0]);
-    res.writeHead(200, {"Content-Type": "application/pdf"});
+    res.writeHead(200, { "Content-Type": "application/pdf" });
     res.write(data);
-    res.end();       
+    res.end();
   } catch (e) {
     return res.sendStatus(404);
   }

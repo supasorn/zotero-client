@@ -9816,7 +9816,7 @@ var _text_layer_builder = __webpack_require__(33);
 
 var _xfa_layer_builder = __webpack_require__(34);
 
-const DEFAULT_CACHE_SIZE = 10;
+const DEFAULT_CACHE_SIZE = 32;
 
 function PDFPageViewBuffer(size) {
   const data = [];

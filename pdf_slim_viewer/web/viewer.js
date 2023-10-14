@@ -10194,7 +10194,7 @@ class BaseViewer {
         this.bestTop = pi.top;
       if (pi.bottom > this.bestBottom)
         this.bestBottom = pi.bottom;
-      if (pi.right - pi.left < this.smallestWidth && pi.right - pi.left > 0.6 * canvas.width)
+      if (pi.right - pi.left < this.smallestWidth && (pi.right - pi.left > 0.5 * canvas.width || this.smallestWidth == 10000))
         this.smallestWidth = pi.right - pi.left;
 
       
@@ -10210,7 +10210,6 @@ class BaseViewer {
           pi.right = (pi.right + margin) / viewport.width;
           pi.top = (this.bestTop - margin) / viewport.height;
           pi.bottom = (this.bestBottom + margin) / viewport.height;
-          
           pi.bound_ready = 1;
           savelist.push([pi.left, pi.right, pi.top, pi.bottom]);
         }

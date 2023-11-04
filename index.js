@@ -14,6 +14,77 @@ console.log(cred.key, cred.userid);
 app.use(express.static("./"));
 app.use("/pdf_slim_viewer", express.static("pdf_slim_viewer/"));
 
+app.get('/readdb', async (req, res) => {
+  let dbfile = "/Users/supasorn/Zotero/zotero.sqlite";
+  const sqlite3 = require('sqlite3').verbose();
+
+  let db = new sqlite3.Database(dbfile, sqlite3.OPEN_READONLY, (err) => {
+    if (err) {
+      console.error(err.message);
+    }
+    console.log('Connected to the database.');
+  });
+
+  // SELECT i.itemID, i.itemTypeID, i.dateAdded, subitem.key,
+  const query = `
+    SELECT i.dateAdded, subitem.key,
+           (SELECT idv.value
+            FROM itemData id
+            JOIN itemDataValues idv ON id.valueID = idv.valueID
+            WHERE id.itemID = i.itemID
+            AND id.fieldID = 1
+            LIMIT 1
+           ) AS title,
+          (SELECT GROUP_CONCAT(c.lastName || ' ' || c.firstName, '; ')
+              FROM creators c
+              JOIN itemCreators ci ON c.creatorID = ci.creatorID
+              WHERE ci.itemID = i.itemID
+           ) AS authors,
+          (SELECT idv.value
+              FROM itemData id
+              JOIN itemDataValues idv ON id.valueID = idv.valueID
+              WHERE id.itemID = i.itemID
+              AND id.fieldID = 6
+              LIMIT 1
+             ) AS pubdate
+    FROM items i
+    LEFT JOIN itemAttachments ia ON i.itemID = ia.parentItemID
+    LEFT JOIN items subitem ON ia.itemID = subitem.itemID
+    WHERE NOT EXISTS (
+        SELECT 1
+        FROM collectionItems ci
+        WHERE ci.itemID = i.itemID
+    )
+    AND (
+      i.itemID IN (
+          SELECT parentItemID
+          FROM itemAttachments
+      )
+      OR
+      i.itemID IN (
+          SELECT itemID
+          FROM itemAttachments
+          WHERE parentItemID IS NULL AND contentType = 'application/pdf' AND syncState = 2
+      )
+    )
+    AND ia.contentType = 'application/pdf' 
+    ORDER BY i.dateAdded DESC;
+`;
+
+  let output = "";
+  db.all(query, [], (err, rows) => {
+    if (err) {
+      throw err;
+    }
+    let json = JSON.stringify(rows);
+    // fs.writeFileSync('sql.json', json);
+
+    res.send(json);
+    db.close();
+  });
+
+});
+
 app.get('/sync', async (req, res) => {
   var config = new Zotero.RequestConfig();
   config.Key(cred.key);

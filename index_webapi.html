@@ -1,0 +1,385 @@
+<html>
+  <head>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
+<!--<script src="https://unpkg.com/quick-score@0.0.7/dist/quick-score.min.js"></script>-->
+<script src="fzf.js"></script>
+<link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+
+<style>
+body {
+  font-family: 'Google Sans', helvetica, sans-serif;
+  font-size: 12px;
+}
+
+.paper_pafuse
+.text-centerfuse{
+  text-align: center;
+}
+.preview {
+  width: 140px;
+  border: 1px solid #EEEEEE;
+  display: inline-block;
+  margin: -1px 0 0 -1px;
+}
+.paper {
+  border: 1px solid #DDDDDD;
+  padding: 3px;
+  border-radius: 10px;
+  margin: 5px;
+  background-color: #FAFAFA;
+  box-shadow: 0px 5px 0px 0px #DDDDDD;
+}
+.title {
+  font-size: 18px;
+}
+
+#topnav input[type=text] {
+  width: 500px;
+  padding: 6px;
+  margin: 8px;
+  font-size: 17px;
+  vertical-align: top;
+  background-image: url('searchicon.png');
+  background-position: 10px 10px;
+  background-repeat: no-repeat;
+  padding-left: 40px;
+}
+
+.paper_header {
+  margin: 5px; 
+}
+.div_preview {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  height: 185px;
+  cursor: pointer;
+  text-align: center;
+}
+.year {
+  float: right;
+  font-size: 18px;
+  color: #002c87;
+}
+#table {
+  width: 1130px;
+  float: left;
+}
+.authors {
+  color: #999999;
+}
+#reader {
+  float: right;
+}
+.iframe {
+  width: 100%;
+}
+
+#sync {
+  background-image: url('Reload-0.9s-64px.png');
+  background-size: 32px;
+  background-repeat: no-repeat;
+  background-position: center;
+
+  display: inline-block;
+  width: 32px;
+  height: 32px;
+  text-decoration: none;
+  cursor: pointer;
+  margin-top: 15px;
+}
+
+#gsearch iframe {
+  width: 1130px;
+  height: 500px;
+}
+#gsearch {
+  display: none;
+}
+</style>
+<script>
+var data;
+var children = {};
+var parents = {};
+var doms = {};
+var previews = {};
+var preview_timeout;
+const MAX_RESULTS = 25;
+
+var fetchCounter = 0;
+
+function addZero(i) {
+  if (i < 10) i = "0" + i;
+  return i;
+}
+
+function loadPreview(key) {
+  if ($(`#paper_${key} .div_preview`).length) {
+    $(`#paper_${key} .div_preview`).html(previews[key]);
+    return;
+  }
+
+  let pdfkey = null;
+  // Parent is pdf
+  if (parents[key]["data"]["contentType"] == "application/pdf") {
+    pdfkey = key;
+  } else if (key in children) {
+    let ch = children[key];
+    for (let id = 0; id < ch.length; id++) {
+      if ("data" in ch[id] && ch[id]["data"]["contentType"] == "application/pdf") {
+        pdfkey = ch[id]["key"];
+        break;
+      }
+    }
+  }
+  if (pdfkey == null) return;
+  $(`#paper_${key}`).append(`<div class='div_preview' onclick='window.open("/pdf_slim_viewer/web/viewer.html?file=http:/papers/${pdfkey}/${parents[key].data.title.replace('"', '').replace("'", "")}")'></div>`);
+
+  $.get(`fetch_preview/${pdfkey}`, (data) => {
+    let lim = 8;
+    let st = "";
+    for (let d in data) {
+      //st += `<img src='${data[d]}' class='preview' loading='lazy'>`;
+      st += `<img src='${data[d]}' class='preview'>`;
+      if (--lim == 0) break;
+    }
+    previews[key] = st;
+    $(`#paper_${key} .div_preview`).html(st);
+  });
+  // $(`#paper_${d["data"]["parentItem"]}`).append(`${d["key"]}`);
+}
+
+function sorter(a, b) {
+  return Date.parse(b["data"]["dateAdded"]) - Date.parse(a["data"]["dateAdded"]);
+}
+function generateAuthorList(d) {
+  let out = "";
+  if ("data" in d && "creators" in d["data"]) {
+    for (let c of d["data"]["creators"]) {
+      out += `${c.firstName} ${c.lastName}&nbsp;&nbsp;&nbsp;`; 
+    }
+  }
+  return out;
+}
+
+function generateTable() {
+  for (let d of data) {
+    if (!("parentItem" in d["data"])) {
+      const id = d["key"];
+
+      let date = new Date(d["data"]["dateAdded"]);
+
+      let year = '-';
+
+      try {
+        const found = d["data"]["date"].match(/[0-9]{4}/);
+        if (found)
+          year = found[0];
+      } catch {};
+      $("#table").append(`<div id='paper_${id}' class='paper' key='${id}'><div class='paper_header'><span class='title'>${d["data"]["title"]}</span><span class='year'>${year}</span><span class='authors'><br>${generateAuthorList(d)}</span></div></div>`);
+      parents[id] = d;
+      doms[id] = null;
+    } else {
+      const id = d["data"]["parentItem"];
+      if (!(id in children)) {
+        children[id] = [];
+      }
+      children[id].push(d);
+    }
+  }
+  for (let c in children) {
+    children[c].sort(sorter);
+  }
+  /*
+  $(".paper").each((i, p) => {
+    //if (i < 10) {
+      loadPreview($(p).attr("key"));
+    //}
+  });*/
+}
+
+const permutator = (inputArr) => {
+  let result = [];
+  const permute = (arr, m = []) => {
+    if (arr.length === 0) {
+      result.push(m)
+    } else {
+      for (let i = 0; i < arr.length; i++) {
+        let curr = arr.slice();
+        let next = curr.splice(i, 1);
+        permute(curr.slice(), m.concat(next))
+     }
+   }
+ }
+ permute(inputArr)
+ return result;
+}
+
+function postprocessData() {
+  data.sort(sorter);
+  console.log("postprocess");
+  for (let d of data) {
+    d["search_string"] = d["data"]["title"] + ";";
+    d["search_string"] += generateAuthorList(d) + ";";
+    d["search_string"] += d["data"]["date"] + ";";
+  }
+}
+
+function increaseScoreForExact(result, s) {
+  for (let r of result) {
+    if (r["_"].search_string.search(s) != -1) {
+      r.score ++;
+    }
+  }
+}
+
+function showPreviewForTopResults() {
+  const paperlist = $("#table").children(".paper");
+  for (let i = 0; i < MAX_RESULTS && i < paperlist.length; i++) {
+    loadPreview($(paperlist[i]).attr("key"));
+
+  }
+}
+
+$(document).ready(function () {
+  $.getJSON("api/data", function(d) {
+    data = d;
+    postprocessData();
+
+    generateTable();
+    showPreviewForTopResults();
+    const searcher = "fzf";
+    $("#search").keydown('input',function(e){
+      if (e.keyCode == 13) {
+        let arx = null;
+        if (e.metaKey || e.ctrlKey)
+          arx = "+arxiv";
+        else if (e.shiftKey) 
+          arx = "";
+        if (arx) {
+          $("#gsearch iframe").attr('src', `https://www.google.com/search?q=${$(this).val()}${arx}&igu=1`);;
+          $("#gsearch").show();
+        }
+      }
+    });
+    $("#search").on('input',function(e){
+      if ($(this).val().trim() == "") {
+        $(".paper").each( (i, p) => {
+          const key = $(p).attr("key");
+          doms[key] = $(p).detach();
+        });
+        for (let d of data) {
+          $("#table").append(doms[d.key]);
+        }
+      } else {
+        let result = [];
+        if (searcher == 'fzf') {
+          const ss = $(this).val().trim();
+          const fzf = getFzf(data);
+          result = fzf.find(ss);
+          
+        } else if (searcher == 'quick') {
+          const qs = new quickScore.QuickScore(data, ["search_string"]);
+          const ss = $(this).val().trim();
+
+          const split = ss.split(" ");
+          let perm = null;
+          if (split.length <= 3) {
+            perm = permutator(split);
+          } else {
+            perm = [split, split.slice().reverse()];
+          }
+          result = [];
+          for (let p of perm) {
+            result = result.concat(qs.search(p.join(" ")));
+          }
+          increaseScoreForExact(result, ss);
+          result.sort((a, b) => b.score - a.score);
+        } else if (searcher == 'fuse') {
+          const options = {
+            // isCaseSensitive: false,
+            // includeScore: false,
+            shouldSort: true,
+            // includeMatches: false,
+            // findAllMatches: false,
+            // minMatchCharLength: 1,
+            // location: 0,
+            // threshold: 0.6,
+            // distance: 100,
+            useExtendedSearch: true,
+            // ignoreLocation: false,
+            // ignoreFieldNorm: false,
+            keys: [
+              "search_string",
+            ]
+          };
+          const fuse = new Fuse(data, options);
+          const ss = $(this).val().trim();
+
+          result = fuse.search(ss);
+          
+          console.log(result);
+          
+        }
+
+        $(".paper").each( (i, p) => {
+          const key = $(p).attr("key");
+          doms[key] = $(p).detach();
+        });
+        let alreadyshow = {};
+        let maxResult = MAX_RESULTS;
+
+        result.forEach((p) => {
+          if (!(p.item.key in alreadyshow)) {
+            if (maxResult-- > 0) {
+              let key = p.item.key;
+              if (!(key in doms)) {
+                key = p.item.data.parentItem;
+              }
+              $("#table").append(doms[key]);
+              alreadyshow[key] = 1;
+            }
+          }
+        });
+      }
+      window.clearTimeout(preview_timeout);
+      preview_timeout = setTimeout(showPreviewForTopResults, 500);
+    });
+  });
+  var img = new Image();
+  img.src = 'Reload-0.9s-64px.gif';
+  var sync = 0;
+
+  $("#sync").click(function(e) {
+    if (!sync) {
+      $(this).css("background-image", "url('Reload-0.9s-64px.gif')");
+      $.get("/sync", function(data) {
+        location.reload();
+      });
+      sync = 1;
+    }
+    e.preventDefault();
+  });
+});
+
+</script>
+</head>
+<body>
+  <div id="topnav" class="nav justify-content-center">
+    <input type="text" placeholder="Search.." id="search" autofocus>
+    <div id="sync"></div>
+  </div>
+  <div id="gsearch" class="d-flex justify-content-center" style="display: none !important;">
+    <iframe>
+    </iframe>
+  </div>
+  <div class="d-flex justify-content-center">
+    <div id="table"></div>
+    <div id="reader">
+    </div>
+  </div>
+
+</body>
+</html>

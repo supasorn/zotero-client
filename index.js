@@ -27,7 +27,7 @@ app.get('/readdb', async (req, res) => {
 
   // SELECT i.itemID, i.itemTypeID, i.dateAdded, subitem.key,
   const query = `
-    SELECT i.dateAdded, subitem.key,
+    SELECT i.dateAdded, subitem.key, i.itemID,
            (SELECT idv.value
             FROM itemData id
             JOIN itemDataValues idv ON id.valueID = idv.valueID
@@ -35,11 +35,16 @@ app.get('/readdb', async (req, res) => {
             AND id.fieldID = 1
             LIMIT 1
            ) AS title,
-          (SELECT GROUP_CONCAT(c.lastName || ' ' || c.firstName, '; ')
-              FROM creators c
-              JOIN itemCreators ci ON c.creatorID = ci.creatorID
-              WHERE ci.itemID = i.itemID
-           ) AS authors,
+           (
+        SELECT GROUP_CONCAT(fullName, '; ')
+        FROM (
+            SELECT c.lastName || ' ' || c.firstName AS fullName
+            FROM creators c
+            JOIN itemCreators ci ON c.creatorID = ci.creatorID
+            WHERE ci.itemID = i.itemID
+            ORDER BY ci.orderIndex
+        )
+       ) AS authors,
           (SELECT idv.value
               FROM itemData id
               JOIN itemDataValues idv ON id.valueID = idv.valueID
@@ -54,6 +59,11 @@ app.get('/readdb', async (req, res) => {
         SELECT 1
         FROM collectionItems ci
         WHERE ci.itemID = i.itemID
+    ) 
+    AND NOT EXISTS (
+        SELECT 1
+        FROM groupItems gi
+        WHERE gi.itemID = i.itemID
     )
     AND (
       i.itemID IN (

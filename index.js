@@ -38,7 +38,7 @@ app.get('/readdb', async (req, res) => {
            (
         SELECT GROUP_CONCAT(fullName, '; ')
         FROM (
-            SELECT c.lastName || ' ' || c.firstName AS fullName
+            SELECT c.firstName || ' ' || c.lastName AS fullName
             FROM creators c
             JOIN itemCreators ci ON c.creatorID = ci.creatorID
             WHERE ci.itemID = i.itemID
@@ -95,84 +95,6 @@ app.get('/readdb', async (req, res) => {
 
 });
 
-app.get('/sync', async (req, res) => {
-  var config = new Zotero.RequestConfig();
-  config.Key(cred.key);
-  config.LibraryType('user').LibraryID(cred.userid);
-  config.Target('items').Limit(100);
-
-
-  const obj = await fs.promises.readFile('./results.json');
-  const json = JSON.parse(obj);
-  let maxversion = 0;
-  for (let item of json) {
-    if (item.version > maxversion)
-      maxversion = item.version;
-  }
-  console.log(maxversion)
-  config.config["since"] = maxversion;
-
-  var fetcher = new Zotero.Fetcher(config.config);
-
-  fetcher.fetchAll().then(() => {
-    let results = fetcher.results;
-    console.log(`\nthere are ${fetcher.totalResults} results available, and we've already gotten ${results.length}\n`);
-
-
-    for (let item of results) {
-      const found = json.findIndex(element => element.key == item.key)
-      if (found == -1) {
-        console.log(item.key, "not found");
-        json.push(item);
-      } else {
-        console.log(item.key, "found", found);
-        json[found] = item;
-      }
-    }
-
-    let data = JSON.stringify(json);
-    fs.writeFileSync('results.json', data);
-    res.redirect('/');
-  });
-});
-
-app.get('/fsync', async (req, res) => {
-  var config = new Zotero.RequestConfig();
-  config.Key(cred.key);
-  config.LibraryType('user').LibraryID(cred.userid);
-  config.Target('items').Limit(100);
-
-  var fetcher = new Zotero.Fetcher(config.config);
-
-  fetcher.fetchAll().then(() => {
-    let results = fetcher.results;
-    console.log(`\nthere are ${fetcher.totalResults} results available, and we've already gotten ${results.length}\n`);
-
-    let data = JSON.stringify(results);
-    fs.writeFileSync('results.json', data);
-    res.redirect('/');
-  });
-});
-
-app.get('/delete', async (req, res) => {
-  var config = new Zotero.RequestConfig();
-  config.Key(cred.key);
-  config.LibraryType('user').LibraryID(cred.userid);
-  //config.Target('items').TargetModifier("top").Limit(100);
-  config.Target('deleted');
-  config.config["since"] = 1000;
-
-  var fetcher = new Zotero.Fetcher(config.config);
-  fetcher.fetchAll().then(() => {
-    let results = fetcher.results;
-    console.log(`\nthere are ${fetcher.totalResults} results available, and we've already gotten ${results.length}\n`);
-
-    console.log(results)
-  }).catch(e => {
-    console.log(e);
-  });
-});
-
 app.get('/fetch_preview/:id', async (req, res) => {
   const id = req.params.id;
   const send_list = () => glob(`preview/${id}/small*`, (er, files) => { res.json(files) });
@@ -211,13 +133,6 @@ app.get('/papers/:id/:name?', async (req, res) => {
   } catch (e) {
     return res.sendStatus(404);
   }
-});
-
-app.get('/api/data', (req, res) => {
-  fs.readFile('./results.json', (err, json) => {
-    let obj = JSON.parse(json);
-    res.json(obj);
-  });
 });
 
 app.get('/test', (req, res) => {

@@ -137,7 +137,8 @@
       pdfkey = parents[key].key;
       // Parent is pdf
       if (pdfkey == null) return;
-      $(`#paper_${key}`).append(`<div class='div_preview' onclick='window.open("/pdf_slim_viewer/web/viewer.html?file=http:/papers/${pdfkey}/${parents[key].title.replace('"', '').replace("'", "")}")'></div>`);
+      let title = parents[key].title ?? "";
+      $(`#paper_${key}`).append(`<div class='div_preview' onclick='window.open("/pdf_slim_viewer/web/viewer.html?file=http:/papers/${pdfkey}/${title.replace('"', '').replace("'", "")}")'></div>`);
 
       $.get(`fetch_preview/${pdfkey}`, (data) => {
         let lim = 8;
@@ -170,7 +171,11 @@
           if (found)
             year = found[0];
         } catch { };
-        $("#table").append(`<div id='paper_${id}' class='paper' key='${id}'><div class='paper_header'><span class='title'>${d["title"]}</span><span class='year'>${year}</span><span class='authors'><br>${d["authors"].replace(/;/g, "&nbsp;&nbsp;&nbsp;")}</span></div></div>`);
+
+        // set authors = "" if null
+        let authors = d["authors"] ?? "";
+
+        $("#table").append(`<div id='paper_${id}' class='paper' key='${id}'><div class='paper_header'><span class='title'>${d["title"]}</span><span class='year'>${year}</span><span class='authors'><br>${authors.replace(/;/g, "&nbsp;&nbsp;&nbsp;")}</span></div></div>`);
         parents[id] = d;
         doms[id] = null;
       }
@@ -324,7 +329,9 @@
             });
           }
           window.clearTimeout(preview_timeout);
-          preview_timeout = setTimeout(showPreviewForTopResults, 500);
+          // preview_timeout = setTimeout(showPreviewForTopResults, 50);
+          preview_timeout = setTimeout(showPreviewForTopResults, 10);
+          // showPreviewForTopResults();
         });
       });
       var img = new Image();

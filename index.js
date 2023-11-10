@@ -26,7 +26,7 @@ app.get('/readdb', async (req, res) => {
   });
 
   const query = `
-    SELECT i.dateAdded, subitem.key, i.itemID,
+    SELECT i.dateAdded, COALESCE(subitem.key, i.key) AS key, i.itemID,
            (SELECT idv.value
             FROM itemData id
             JOIN itemDataValues idv ON id.valueID = idv.valueID
@@ -52,7 +52,7 @@ app.get('/readdb', async (req, res) => {
               LIMIT 1
              ) AS pubdate
     FROM items i
-    LEFT JOIN itemAttachments ia ON i.itemID = ia.parentItemID
+    LEFT JOIN itemAttachments ia ON i.itemID = ia.parentItemID AND ia.contentType = 'application/pdf' 
     LEFT JOIN items subitem ON ia.itemID = subitem.itemID
     WHERE 
     NOT EXISTS (
@@ -72,7 +72,6 @@ app.get('/readdb', async (req, res) => {
           WHERE parentItemID IS NULL AND contentType = 'application/pdf' 
       )
     )
-    AND ia.contentType = 'application/pdf' 
     ORDER BY i.dateAdded DESC;
 `;
     //AND NOT EXISTS (

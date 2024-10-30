@@ -14,11 +14,32 @@ console.log(cred.key, cred.userid);
 app.use(express.static("./"));
 app.use("/pdf_slim_viewer", express.static("pdf_slim_viewer/"));
 
+
+// Function to check if the real database has been updated
+function needsUpdate(dbfile, copyDbFile) {
+  if (!fs.existsSync(copyDbFile)) return true;
+  
+  const origStats = fs.statSync(dbfile);
+  const copyStats = fs.statSync(copyDbFile);
+  
+  return origStats.mtime > copyStats.mtime || origStats.size !== copyStats.size;
+}
+
+
+
 app.get('/readdb', async (req, res) => {
   let dbfile = "/Users/supasorn/Zotero/zotero.sqlite";
+  const copyDbFile = "/Users/supasorn/Zotero/zotero_copy.sqlite";
+
   const sqlite3 = require('sqlite3').verbose();
 
-  let db = new sqlite3.Database(dbfile, sqlite3.OPEN_READONLY, (err) => {
+  // Make a copy if the original file has been updated
+  if (needsUpdate(dbfile, copyDbFile)) {
+    fs.copyFileSync(dbfile, copyDbFile);
+    console.log("Database copied to avoid lock issues.");
+  }
+
+  let db = new sqlite3.Database(copyDbFile, sqlite3.OPEN_READONLY, (err) => {
     if (err) {
       console.error(err.message);
     }

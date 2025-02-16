@@ -75,8 +75,10 @@ app.get('/readdb', async (req, res) => {
     FROM items i
     LEFT JOIN itemAttachments ia ON i.itemID = ia.parentItemID AND ia.contentType = 'application/pdf' 
     LEFT JOIN items subitem ON ia.itemID = subitem.itemID
+    LEFT JOIN deletedItems di ON i.itemID = di.itemID
     WHERE 
-    NOT EXISTS (
+    di.itemID IS NULL
+    AND NOT EXISTS (
         SELECT 1
         FROM groupItems gi
         WHERE gi.itemID = i.itemID
@@ -95,12 +97,6 @@ app.get('/readdb', async (req, res) => {
     )
     ORDER BY i.dateAdded DESC;
 `;
-    //AND NOT EXISTS (
-        // SELECT 1
-        // FROM collectionItems ci
-        // WHERE ci.itemID = i.itemID
-    // ) 
-          // WHERE parentItemID IS NULL AND contentType = 'application/pdf' AND syncState = 2
 
   let output = "";
   db.all(query, [], (err, rows) => {
@@ -108,6 +104,7 @@ app.get('/readdb', async (req, res) => {
       throw err;
     }
     let json = JSON.stringify(rows);
+    console.log(json);
     // fs.writeFileSync('sql.json', json);
 
     res.send(json);
